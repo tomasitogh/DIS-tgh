@@ -219,6 +219,19 @@ def show_sampling_plan():
                 )
                 st.caption(f"Objetivo: {beta}")
             
+            # Fórmulas exactas con G y F binomial
+            st.markdown("### 📐 Valores Exactos Calculados")
+            st.info(f"""
+**Fórmulas con los valores óptimos encontrados:**
+
+• **Gᵦ(rc={r_exact}, n={n_exact}, p₀={p0})** = {actual_alpha:.10f}  
+• **Fᵦ(rc={r_exact-1}, n={n_exact}, p₁={p1})** = {actual_beta:.10f}
+
+Donde:
+- **Gᵦ** = 1 - Fᵦ(r | n, p) = P(X > r) = Probabilidad de rechazar H₀
+- **Fᵦ** = P(X ≤ r) = Función de distribución acumulada binomial
+            """)
+            
             # Verificación
             st.markdown("### ✓ Verificación")
             
