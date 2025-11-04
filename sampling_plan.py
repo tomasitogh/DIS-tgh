@@ -17,46 +17,65 @@ def normal_approximation(p0, alpha, p1, beta):
 
 def find_exact_solution(n_start, r_start, p0, alpha, p1, beta, progress_callback=None):
     """
-    Encontrar la solución exacta buscando sistemáticamente desde la aproximación normal
-    """
-    n = n_start
-    max_iterations = 50000
+    Encontrar la solución óptima que minimiza n y maximiza el uso de α y β permitidos.
     
-    for iteration in range(max_iterations):
-        best_r = None
-        min_violation = float('inf')
+    El algoritmo busca el par (n, r) que:
+    1. Cumple las restricciones: α_real <= α y β_real <= β
+    2. Minimiza n (menor tamaño de muestra)
+    3. Maximiza α_real y β_real (estar lo más cerca posible de los límites permitidos)
+    """
+    # Buscar en un rango razonable alrededor de la aproximación normal
+    # Reducimos el rango para hacerlo más eficiente
+    n_min = max(10, int(n_start * 0.85))
+    n_max = int(n_start * 1.15)
+    
+    best_solution = None
+    best_score = float('inf')
+    
+    total_iterations = n_max - n_min
+    
+    # Buscar de menor a mayor n para encontrar el mínimo primero
+    for idx, n in enumerate(range(n_min, n_max + 1)):
+        # Actualizar progreso
+        if progress_callback and idx % 5 == 0:
+            progress = 30 + (idx / total_iterations) * 60
+            progress_callback(min(90, progress))
         
-        r_min = max(1, int(n * p0 * 0.5))
-        r_max = min(n, int(n * p1 * 2))
+        # Rango de búsqueda para r (optimizado)
+        r_min = max(1, int(n * p0 * 0.6))
+        r_max = min(n, int(n * p1 * 1.8))
+        
+        found_valid = False
         
         for r in range(r_min, r_max + 1):
-            # Calcular probabilidades
+            # Calcular probabilidades de error
+            # Error tipo I: P(rechazar H0 | H0 es cierto) = P(X >= r | p0)
             prob_type1 = 1 - binom.cdf(r - 1, n, p0)
+            # Error tipo II: P(no rechazar H0 | H1 es cierto) = P(X < r | p1)
             prob_type2 = binom.cdf(r - 1, n, p1)
             
-            violation_alpha = prob_type1 - alpha
-            violation_beta = prob_type2 - beta
-            
-            total_violation = max(0, violation_alpha) + max(0, violation_beta)
-            
-            if total_violation < min_violation:
-                min_violation = total_violation
-                best_r = r
-                best_probs = (prob_type1, prob_type2)
-            
+            # Verificar que cumple las restricciones
             if prob_type1 <= alpha and prob_type2 <= beta:
-                return n, r, prob_type1, prob_type2
+                found_valid = True
+                # Calcular score: queremos minimizar n y maximizar cercanía a límites
+                # Penalizar fuertemente n más grande
+                # Recompensar estar cerca de los límites de α y β
+                score = (
+                    n * 1000 +  # Penalización por tamaño de muestra (factor dominante)
+                    (alpha - prob_type1)**2 * 1000 +  # Queremos α cercano al límite
+                    (beta - prob_type2)**2 * 1000     # Queremos β cercano al límite
+                )
+                
+                if score < best_score:
+                    best_score = score
+                    best_solution = (n, r, prob_type1, prob_type2)
         
-        n += 1
-        
-        if progress_callback and iteration % 100 == 0:
-            progress = 30 + (iteration / max_iterations) * 60
-            progress_callback(min(90, progress))
+        # Si ya encontramos una solución válida y el siguiente n sería peor,
+        # podemos terminar (optimización)
+        if found_valid and best_solution and n > best_solution[0] + 5:
+            break
     
-    if best_r is not None:
-        return n-1, best_r, best_probs[0], best_probs[1]
-    
-    return None
+    return best_solution
 
 def show_sampling_plan():
     st.title("📊 Plan de Muestreo - Procesos de Bernoulli")
@@ -202,14 +221,49 @@ def show_sampling_plan():
             
             # Verificación
             st.markdown("### ✓ Verificación")
-            check1 = "✅" if actual_alpha <= alpha else "❌"
-            check2 = "✅" if actual_beta <= beta else "❌"
+            
+            # Verificación usando G y F binomial (notación del profesor)
+            G_binomial = 1 - binom.cdf(r_exact, n_exact, p0)
+            F_binomial = binom.cdf(r_exact - 1, n_exact, p1)
             
             col1, col2 = st.columns(2)
             with col1:
+                check1 = "✅" if actual_alpha <= alpha else "❌"
                 st.write(f"{check1} α calculado ≤ α objetivo: **{actual_alpha <= alpha}**")
+                st.caption(f"P(X ≥ r | n, p₀) = 1 - F(r-1 | n, p₀) ≤ α")
             with col2:
+                check2 = "✅" if actual_beta <= beta else "❌"
                 st.write(f"{check2} β calculado ≤ β objetivo: **{actual_beta <= beta}**")
+                st.caption(f"P(X < r | n, p₁) = F(r-1 | n, p₁) ≤ β")
+            
+            # Información adicional con notación G y F
+            with st.expander("📐 Verificación Detallada (Notación G y F Binomial)"):
+                st.markdown(f"""
+                **Notación:**
+                - **F(k | n, p)** = P(X ≤ k) = Función de distribución acumulada
+                - **G(k | n, p)** = P(X > k) = 1 - F(k | n, p) = Función de supervivencia
+                
+                **Condiciones que debe cumplir el plan de muestreo:**
+                
+                1. **Error Tipo I (α):**
+                   - α = P(rechazar H₀ | H₀ es cierto) = P(X ≥ r | n, p₀)
+                   - α = 1 - P(X ≤ r-1 | n, p₀) = 1 - F(r-1 | n, p₀)
+                   - α = {actual_alpha:.10f} ≤ {alpha} ✓
+                
+                2. **Error Tipo II (β):**
+                   - β = P(no rechazar H₀ | H₁ es cierto) = P(X < r | n, p₁)
+                   - β = P(X ≤ r-1 | n, p₁) = F(r-1 | n, p₁)
+                   - β = {actual_beta:.10f} ≤ {beta} ✓
+                
+                **Usando notación alternativa:**
+                - G({r_exact} | {n_exact}, {p0}) = P(X > {r_exact}) = {G_binomial:.10f}
+                - F({r_exact-1} | {n_exact}, {p1}) = P(X ≤ {r_exact-1}) = {F_binomial:.10f}
+                
+                **Nota:** El algoritmo busca minimizar n mientras se mantiene lo más cerca
+                posible de los límites permitidos de α y β, aprovechando al máximo los
+                errores permitidos para obtener el plan de muestreo más eficiente.
+                """)
+            
             
             # Interpretación
             with st.expander("ℹ️ Interpretación de Resultados"):
