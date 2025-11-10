@@ -20,7 +20,8 @@ menu_options = {
     "📈 Distribución Binomial Inversa": "binomial",
     "🎯 Plan de Muestreo (Bernoulli)": "sampling",
     "χ² Pruebas de Chi-Cuadrado": "chi_square",
-    "⍺ Probability Distribution":"distributions"
+    "⍺ Probability Distribution":"distributions",
+    "Fisher-Snedecor":"fisher"
 }
 
 # Selector de página
@@ -258,3 +259,8 @@ elif selected_page == "chi_square":
 elif selected_page == "distributions":
     from prob_distribution import render
     render()
+
+elif selected_page == "fisher":
+    from prob_dist_fisher import render
+    render()
+    
