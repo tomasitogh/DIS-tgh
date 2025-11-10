@@ -19,7 +19,8 @@ menu_options = {
     "🏠 Inicio": "home",
     "📈 Distribución Binomial Inversa": "binomial",
     "🎯 Plan de Muestreo (Bernoulli)": "sampling",
-    "🧮 Calculadora CASIO FX-95ES": "calculator"
+    "χ² Pruebas de Chi-Cuadrado": "chi_square",
+    "⍺ Probability Distribution":"distributions"
 }
 
 # Selector de página
@@ -94,6 +95,27 @@ if selected_page == "home":
         
         if st.button("➡️ Ir a Plan de Muestreo", key="btn_sampling"):
             st.session_state.page = "sampling"
+            st.rerun()
+    
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        st.markdown("""
+        #### χ² Pruebas de Chi-Cuadrado
+        
+        Realiza pruebas de chi-cuadrado con tablas dinámicas:
+        - Bondad de ajuste
+        - Prueba de consistencia (homogeneidad)
+        - Prueba de independencia
+        
+        **Casos de uso:**
+        - Verificar distribuciones teóricas
+        - Comparar poblaciones
+        - Analizar asociaciones entre variables
+        """)
+        
+        if st.button("➡️ Ir a Pruebas Chi-Cuadrado", key="btn_chi"):
+            st.session_state.page = "chi_square"
             st.rerun()
     
     st.markdown("---")
@@ -228,7 +250,11 @@ elif selected_page == "sampling":
     from sampling_plan import show_sampling_plan
     show_sampling_plan()
 
-elif selected_page == "calculator":
-    # Importar y ejecutar la calculadora
-    from calculator import show_calculator
-    show_calculator()
+elif selected_page == "chi_square":
+    # Importar y ejecutar las pruebas de chi-cuadrado
+    from chi_square import show_chi_square
+    show_chi_square()
+
+elif selected_page == "distributions":
+    from prob_distribution import render
+    render()
